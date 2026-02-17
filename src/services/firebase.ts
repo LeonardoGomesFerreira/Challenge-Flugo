@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
+import { getAuth } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: "AIzaSyAe3LJya_tCLLcKBg2m_dIC-04izlRl0gU",
@@ -11,4 +12,8 @@ const firebaseConfig = {
 }
 
 const app = initializeApp(firebaseConfig)
+
+// ⚠️ Você está usando um Firestore multi-database (nome: bd-flugo)
 export const db = getFirestore(app, 'bd-flugo')
+
+export const auth = getAuth(app)

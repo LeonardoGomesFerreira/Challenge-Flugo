@@ -1,55 +1,27 @@
-import { useState } from 'react'
-import { Dialog, DialogContent, DialogTitle, Button, Stack } from '@mui/material'
-import { StepDadosPessoais } from './StepDadosPessoais'
-import { StepDadosProfissionais } from './StepDadosProfissionais'
-import { StepRevisao } from './StepRevisao'
-import type { Colaborador } from '../../types/Colaborador'
+import { Dialog, DialogContent, DialogTitle, Button, Stack, Typography } from '@mui/material'
+import { Link as RouterLink } from 'react-router-dom'
 
 interface Props {
   open: boolean
   onClose: () => void
 }
 
-const initialState: Colaborador = {
-  nome: '',
-  email: '',
-  departamento: '',
-  ativo: true,
-}
-
 export function NovoColaboradorModal({ open, onClose }: Props) {
-  const [step, setStep] = useState(0)
-  const [data, setData] = useState<Colaborador>(initialState)
-
-  function handleChange(values: Partial<Colaborador>) {
-    setData((prev) => ({ ...prev, ...values }))
-  }
-
-  function next() {
-    setStep((prev) => prev + 1)
-  }
-
-  function back() {
-    setStep((prev) => prev - 1)
-  }
-
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Novo Colaborador</DialogTitle>
-
+      <DialogTitle sx={{ fontWeight: 900 }}>Novo Colaborador</DialogTitle>
       <DialogContent>
-        {step === 0 && <StepDadosPessoais data={data} onChange={handleChange} />}
-        {step === 1 && <StepDadosProfissionais data={data} onChange={handleChange} />}
-        {step === 2 && <StepRevisao data={data} />}
+        <Typography color="#6B7280" mb={3}>
+          O cadastro completo (com validações, UX e campos profissionais) está disponível na página dedicada.
+        </Typography>
 
-        <Stack direction="row" justifyContent="space-between" mt={3}>
-          {step > 0 && <Button onClick={back}>Voltar</Button>}
-          {step < 2 && <Button onClick={next}>Próximo</Button>}
-          {step === 2 && (
-            <Button variant="contained" onClick={onClose}>
-              Concluir
-            </Button>
-          )}
+        <Stack direction="row" justifyContent="flex-end" spacing={1.5}>
+          <Button onClick={onClose} sx={{ color: '#6B7280', fontWeight: 700 }}>
+            Cancelar
+          </Button>
+          <Button component={RouterLink} to="/colaboradores/novo" variant="contained" onClick={onClose} sx={{ fontWeight: 900, borderRadius: 2, px: 3 }}>
+            Abrir cadastro
+          </Button>
         </Stack>
       </DialogContent>
     </Dialog>
