@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Alert,
@@ -16,11 +16,15 @@ import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import { useAuth } from '../../auth/useAuth'
+import { getLoginStats } from '../../services/stats.service'
 
 export default function Login() {
   const { loginWithEmail } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+
+  const [stats, setStats] = useState<{ ativos: number; departamentos: number } | null>(null)
+  const [statsLoading, setStatsLoading] = useState(true)
 
   const redirectTo = (() => {
     const state = location.state as { from?: string } | null
@@ -33,6 +37,32 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // ✅ Carrega stats reais do Firestore (ativos + departamentos)
+  useEffect(() => {
+    let mounted = true
+    setStatsLoading(true)
+
+    getLoginStats()
+      .then((r) => {
+        if (!mounted) return
+        setStats(r)
+      })
+      .catch(() => {
+        // se suas regras exigirem auth, pode dar permission-denied aqui.
+        // Não quebramos o login por causa disso.
+        if (!mounted) return
+        setStats(null)
+      })
+      .finally(() => {
+        if (!mounted) return
+        setStatsLoading(false)
+      })
+
+    return () => {
+      mounted = false
+    }
+  }, [])
+
   const canSubmit = useMemo(() => {
     const e = email.trim()
     return /^\S+@\S+\.\S+$/.test(e) && password.length >= 6
@@ -42,12 +72,14 @@ export default function Login() {
     e.preventDefault()
     setError('')
     setLoading(true)
+
     try {
       await loginWithEmail(email.trim(), password)
       navigate(redirectTo, { replace: true })
     } catch (err: unknown) {
       const maybeErr = err as { code?: unknown }
       const code = String(maybeErr?.code || '')
+
       if (code.includes('invalid-credential') || code.includes('wrong-password')) {
         setError('E-mail ou senha inválidos.')
       } else if (code.includes('user-not-found')) {
@@ -61,6 +93,16 @@ export default function Login() {
       setLoading(false)
     }
   }
+
+  const statsCards = useMemo(() => {
+    const ativosValue = statsLoading ? '—' : String(stats?.ativos ?? 0)
+    const depsValue = statsLoading ? '—' : String(stats?.departamentos ?? 0)
+
+    return [
+      { label: 'Colaboradores ativos', value: ativosValue },
+      { label: 'Departamentos', value: depsValue },
+    ]
+  }, [stats, statsLoading])
 
   return (
     <Box
@@ -141,12 +183,9 @@ export default function Login() {
           </Typography>
         </Box>
 
-        {/* Cards decorativos de estatística */}
+        {/* Cards de estatística — agora vindos do Firestore */}
         <Stack spacing={2} sx={{ position: 'relative' }}>
-          {[
-            { label: 'Colaboradores ativos', value: '↑ 12%' },
-            { label: 'Departamentos', value: '8 times' },
-          ].map(({ label, value }) => (
+          {statsCards.map(({ label, value }) => (
             <Stack
               key={label}
               direction="row"
@@ -253,7 +292,11 @@ export default function Login() {
                         size="small"
                         sx={{ color: '#94A3B8' }}
                       >
-                        {showPwd ? <VisibilityOffRoundedIcon fontSize="small" /> : <VisibilityRoundedIcon fontSize="small" />}
+                        {showPwd ? (
+                          <VisibilityOffRoundedIcon fontSize="small" />
+                        ) : (
+                          <VisibilityRoundedIcon fontSize="small" />
+                        )}
                       </IconButton>
                     </InputAdornment>
                   ),
@@ -280,6 +323,12 @@ export default function Login() {
           <Typography color="#94A3B8" fontSize="0.8rem" mt={3} textAlign="center">
             Crie usuários no Firebase Authentication (Email/Senha) para acessar.
           </Typography>
+
+          {!statsLoading && stats === null && (
+            <Typography color="#94A3B8" fontSize="0.75rem" mt={1.25} textAlign="center">
+              * As estatísticas podem não aparecer antes do login dependendo das regras do Firestore.
+            </Typography>
+          )}
         </Box>
       </Box>
     </Box>
