@@ -3,17 +3,14 @@ import { getFirestore } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAe3LJya_tCLLcKBg2m_dIC-04izlRl0gU",
-  authDomain: "flugo-c40c3.firebaseapp.com",
-  projectId: "flugo-c40c3",
-  storageBucket: "flugo-c40c3.firebasestorage.app",
-  messagingSenderId: "79412195498",
-  appId: "1:79412195498:web:7e474d815ec711d3caa0d3",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID as string,
 }
 
 const app = initializeApp(firebaseConfig)
-
-// ⚠️ Você está usando um Firestore multi-database (nome: bd-flugo)
-export const db = getFirestore(app, 'bd-flugo')
-
+export const db = getFirestore(app, import.meta.env.VITE_FIREBASE_DB_ID as string)
 export const auth = getAuth(app)
