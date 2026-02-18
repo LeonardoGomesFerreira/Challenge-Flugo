@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -248,12 +249,13 @@ export default function Departamentos() {
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([])
   const [loading, setLoading] = useState(true)
   const [fNome, setFNome] = useState('')
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   const [modal, setModal] = useState<{ open: boolean; mode: 'create' | 'edit'; dept: Departamento | null }>({
     open: false, mode: 'create', dept: null,
   })
-  const [deleteModal, setDeleteModal] = useState<{ open: boolean; dept: Departamento | null }>({
-    open: false, dept: null,
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; depts: Departamento[] }>({
+    open: false, depts: [],
   })
   const [snack, setSnack] = useState<{ open: boolean; type: 'success' | 'error'; msg: string }>({
     open: false, type: 'success', msg: '',
@@ -288,17 +290,33 @@ export default function Departamentos() {
   }, [departamentos, fNome])
 
   async function handleDeleteDept() {
-    const dept = deleteModal.dept
-    if (!dept?.id) return
+    const depts = deleteModal.depts
+    if (!depts.length) return
     try {
-      await excluirDepartamento(dept.id)
-      setSnack({ open: true, type: 'success', msg: 'Departamento excluído!' })
-      setDeleteModal({ open: false, dept: null })
+      for (const dept of depts) {
+        if (dept.id) await excluirDepartamento(dept.id)
+      }
+      setSnack({ 
+        open: true, 
+        type: 'success', 
+        msg: depts.length > 1 ? `${depts.length} departamentos excluídos!` : 'Departamento excluído!' 
+      })
+      setDeleteModal({ open: false, depts: [] })
+      setSelectedIds([])
       loadAll()
     } catch (e) {
       console.error(e)
       setSnack({ open: true, type: 'error', msg: 'Não foi possível excluir.' })
     }
+  }
+
+  function handleDeleteOne(dept: Departamento) {
+    setDeleteModal({ open: true, depts: [dept] })
+  }
+
+  function handleDeleteSelected() {
+    const deptsToDelete = departamentos.filter((d) => d.id && selectedIds.includes(d.id))
+    setDeleteModal({ open: true, depts: deptsToDelete })
   }
 
   return (
@@ -347,20 +365,59 @@ export default function Departamentos() {
           elevation={0}
           sx={{ p: 2.5, mb: 2.5, borderRadius: 3, border: '1px solid #E2E8F0', bgcolor: '#fff' }}
         >
-          <TextField
-            placeholder="Buscar departamento..."
-            value={fNome}
-            onChange={(e) => setFNome(e.target.value)}
-            fullWidth
-            size="small"
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchRoundedIcon sx={{ color: '#94A3B8', fontSize: 18 }} />
-                </InputAdornment>
-              ),
-            }}
-          />
+          <Stack direction="row" alignItems="center" spacing={1} mb={2}>
+            <SearchRoundedIcon sx={{ color: '#64748B', fontSize: 18 }} />
+            <Typography fontWeight={700} fontSize="0.85rem" color="#64748B" textTransform="uppercase" letterSpacing="0.05em">
+              Buscar
+            </Typography>
+            {selectedIds.length > 0 && (
+              <Chip
+                size="small"
+                label={`${selectedIds.length} selecionado${selectedIds.length !== 1 ? 's' : ''}`}
+                sx={{ bgcolor: 'rgba(34,197,94,0.12)', color: '#16A34A', height: 20, fontSize: '0.7rem', fontWeight: 800 }}
+              />
+            )}
+          </Stack>
+
+          <Stack direction="row" spacing={2} alignItems="center">
+            <TextField
+              placeholder="Buscar departamento..."
+              value={fNome}
+              onChange={(e) => setFNome(e.target.value)}
+              fullWidth
+              size="small"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchRoundedIcon sx={{ color: '#94A3B8', fontSize: 18 }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <Tooltip title={selectedIds.length ? `Excluir ${selectedIds.length} selecionado(s)` : 'Selecione departamentos para excluir'} arrow>
+              <span>
+                <IconButton
+                  onClick={handleDeleteSelected}
+                  disabled={!selectedIds.length}
+                  sx={{
+                    borderRadius: 2,
+                    width: 36,
+                    height: 36,
+                    bgcolor: selectedIds.length ? 'rgba(239,68,68,0.08)' : 'transparent',
+                    color: selectedIds.length ? '#EF4444' : '#CBD5E1',
+                    border: selectedIds.length ? '1px solid rgba(239,68,68,0.2)' : '1px solid #E2E8F0',
+                    transition: 'all 0.15s ease',
+                    '&:hover': {
+                      bgcolor: selectedIds.length ? 'rgba(239,68,68,0.14)' : 'transparent',
+                    },
+                  }}
+                >
+                  <DeleteRoundedIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Stack>
         </Paper>
 
         {/* Tabela */}
@@ -388,6 +445,21 @@ export default function Departamentos() {
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC', borderBottom: '2px solid #E2E8F0' }}>
+                  <TableCell padding="checkbox" sx={{ pl: 2.5 }}>
+                    <Checkbox
+                      checked={filtered.length > 0 && filtered.every((d) => d.id && selectedIds.includes(d.id))}
+                      indeterminate={filtered.some((d) => d.id && selectedIds.includes(d.id)) && !filtered.every((d) => d.id && selectedIds.includes(d.id))}
+                      onChange={(e) => {
+                        const allIds = filtered.map((d) => d.id).filter(Boolean) as string[]
+                        if (e.target.checked) {
+                          setSelectedIds((prev) => Array.from(new Set([...prev, ...allIds])))
+                        } else {
+                          setSelectedIds((prev) => prev.filter((id) => !allIds.includes(id)))
+                        }
+                      }}
+                      size="small"
+                    />
+                  </TableCell>
                   {['Nome', 'Gestor Responsável', 'Colaboradores', 'Ações'].map((h, i) => (
                     <TableCell
                       key={h}
@@ -412,17 +484,37 @@ export default function Departamentos() {
                   const canDelete = !(d.colaboradorIds?.length)
                   const gestorNome = d.gestorId ? gestoresById.get(d.gestorId) : null
                   const count = d.colaboradorIds?.length || 0
+                  const isSelected = d.id ? selectedIds.includes(d.id) : false
 
                   return (
                     <TableRow
                       key={d.id}
                       sx={{
-                        transition: 'background 0.12s ease',
-                        '&:hover': { bgcolor: '#F8FAFC' },
+                        bgcolor: isSelected ? 'rgba(34,197,94,0.04)' : '#fff',
+                        borderLeft: isSelected ? '3px solid #22C55E' : '3px solid transparent',
+                        transition: 'all 0.12s ease',
+                        '&:hover': { bgcolor: isSelected ? 'rgba(34,197,94,0.06)' : '#F8FAFC' },
                         '&:last-child td': { border: 0 },
                         '& td': { borderColor: '#F1F5F9' },
                       }}
                     >
+                      {/* Checkbox */}
+                      <TableCell padding="checkbox" sx={{ pl: 2 }}>
+                        <Checkbox
+                          checked={isSelected}
+                          disabled={!canDelete || !d.id}
+                          onChange={() => {
+                            if (!d.id) return
+                            setSelectedIds((prev) =>
+                              prev.includes(d.id!)
+                                ? prev.filter((id) => id !== d.id)
+                                : [...prev, d.id!]
+                            )
+                          }}
+                          size="small"
+                        />
+                      </TableCell>
+
                       {/* Nome */}
                       <TableCell sx={{ py: 2 }}>
                         <Stack direction="row" alignItems="center" spacing={1.5}>
@@ -529,7 +621,7 @@ export default function Departamentos() {
                               <IconButton
                                 size="small"
                                 disabled={!canDelete}
-                                onClick={() => setDeleteModal({ open: true, dept: d })}
+                                onClick={() => handleDeleteOne(d)}
                                 sx={{
                                   width: 32, height: 32, borderRadius: 1.5,
                                   color: canDelete ? '#EF4444' : '#CBD5E1',
@@ -575,7 +667,7 @@ export default function Departamentos() {
       {/* Dialog excluir */}
       <Dialog
         open={deleteModal.open}
-        onClose={() => setDeleteModal({ open: false, dept: null })}
+        onClose={() => setDeleteModal({ open: false, depts: [] })}
         maxWidth="xs"
         fullWidth
       >
@@ -594,23 +686,33 @@ export default function Departamentos() {
             >
               <WarningAmberRoundedIcon sx={{ color: '#EF4444', fontSize: 22 }} />
             </Box>
-            <span>Excluir Departamento</span>
+            <span>Excluir Departamento{deleteModal.depts.length > 1 ? 's' : ''}</span>
           </Stack>
         </DialogTitle>
 
         <DialogContent sx={{ px: 3.5 }}>
-          <Typography color="#475569" lineHeight={1.7}>
-            Tem certeza que deseja excluir o departamento{' '}
-            <Typography component="span" fontWeight={800} color="#0F172A">
-              {deleteModal.dept?.nome}
+          {deleteModal.depts.length === 1 ? (
+            <Typography color="#475569" lineHeight={1.7}>
+              Tem certeza que deseja excluir o departamento{' '}
+              <Typography component="span" fontWeight={800} color="#0F172A">
+                {deleteModal.depts[0]?.nome}
+              </Typography>
+              ? Esta ação não pode ser desfeita.
             </Typography>
-            ? Esta ação não pode ser desfeita.
-          </Typography>
+          ) : (
+            <Typography color="#475569" lineHeight={1.7}>
+              Tem certeza que deseja excluir{' '}
+              <Typography component="span" fontWeight={800} color="#0F172A">
+                {deleteModal.depts.length} departamentos
+              </Typography>
+              ? Esta ação não pode ser desfeita.
+            </Typography>
+          )}
         </DialogContent>
 
         <DialogActions sx={{ px: 3.5, pb: 3, gap: 1 }}>
           <Button
-            onClick={() => setDeleteModal({ open: false, dept: null })}
+            onClick={() => setDeleteModal({ open: false, depts: [] })}
             sx={{ color: '#64748B', fontWeight: 700 }}
           >
             Cancelar
