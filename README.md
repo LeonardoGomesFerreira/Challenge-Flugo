@@ -8,7 +8,7 @@ Aplicação web desenvolvida como desafio técnico utilizando ReactJS, TypeScrip
 
 O projeto está hospedado na Vercel:
 
-🔗 https://desafio-frontend-flugo.vercel.app
+🔗 https://challenge-flugo-git-main-leonardogomesferreiras-projects.vercel.app
 
 ---
 
